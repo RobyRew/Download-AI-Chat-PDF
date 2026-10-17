@@ -29,8 +29,10 @@ Long chats are not fully in the page:
 
 1. Install a userscript manager:
    [Tampermonkey](https://www.tampermonkey.net/) (Chrome, Edge, Firefox, Safari, Opera),
-   [Violentmonkey](https://violentmonkey.github.io/) or
-   [ScriptCat](https://scriptcat.org/).
+   [Violentmonkey](https://violentmonkey.github.io/),
+   [ScriptCat](https://scriptcat.org/), or on Safari also
+   [Userscripts](https://github.com/quoid/userscripts) (its menu has no script commands;
+   use the ⚙ button for the options).
    On Chrome/Edge with Tampermonkey 5+, also enable **Allow User Scripts** for the
    extension (`chrome://extensions` → Tampermonkey → Details).
 2. Open
@@ -42,8 +44,9 @@ The manager checks the latest GitHub release for updates (`@updateURL`).
 
 ## Use
 
-- Open a conversation and click the **PDF** button (top-right; drag it anywhere — the
-  position is remembered per site), **or** press **⌘P** (macOS) / **Ctrl+P**.
+- Open a conversation and click **PDF** on the pill at the top-right (drag the pill
+  anywhere — the position is remembered per site), **or** press **⌘P** (macOS) / **Ctrl+P**.
+- The **⚙** half of the pill opens the PDF options.
 - A small card shows progress while the script loads the history and collects every
   message. Keep the tab in front; **Cancel** or **Esc** stops it.
 - The print dialog opens. Choose **Save as PDF** as the destination.
@@ -56,18 +59,25 @@ Printing from the browser menu (**File ▸ Print…**) cannot wait for loading, 
 prints the messages that are already in the page, merged with the last full capture of
 the same chat. Use the button or the shortcut for the complete chat.
 
-## Settings
+## PDF options
 
-In the Tampermonkey / Violentmonkey menu on a supported site:
+Click the **⚙** half of the button. Changes are saved right away (per browser, shared by
+all four sites); **Save PDF** in the card starts an export.
 
-| Menu entry | Default | Effect |
+| Option | Default | Effect |
 | --- | --- | --- |
-| 🖨️ Save full chat as PDF | — | Same as the button |
-| Theme in PDF | Light | *Light* switches the site to its light theme while printing; *Same as page* keeps your current theme (dark PDF if you use dark mode) |
-| Header block | On | Title, site, export date and link at the top of the first page |
-| ⌘P / Ctrl+P prints full chat | On | Off = the shortcut prints the page normally |
-| Floating button | Shown | Hide it and use the shortcut / menu only |
+| Colours | Light | *Light* switches the site to its light theme while printing; *Same as page* keeps your current theme (dark PDF if you use dark mode) |
+| Paper | Choose in dialog | *A4* / *Letter* fix the paper size; *Choose in dialog* leaves it to the print dialog |
+| Orientation | Portrait | Portrait or landscape pages |
+| Margins | Normal | Normal (12 mm), Narrow (6 mm) or None |
+| Text size | Normal | Small (85 %), Normal, Large (115 %) |
+| Title, date and link on top | On | Header block at the top of the first page |
+| Images | On | Off leaves pictures out of the PDF |
+| ⌘P / Ctrl+P prints the full chat | On | Off = the shortcut prints the page normally |
 | Reset button position | — | Moves the button back to the top-right corner |
+
+The userscript-manager menu (Tampermonkey, Violentmonkey) has **Save full chat as PDF**,
+**PDF options…** and a switch to hide or show the floating button.
 
 ## How it works
 
@@ -81,10 +91,17 @@ In the Tampermonkey / Violentmonkey menu on a supported site:
 3. Builds one print copy at the end of `<body>`: the copied messages, wrapped in
    shallow copies of their original ancestors so the site's own CSS — fonts, bubbles,
    code blocks, tables, math — keeps applying. Fixed heights, scroll clipping,
-   "Show more" clamps and copy / edit / rating buttons are removed.
-4. Switches the page to its light theme (optional), sets the tab title (the PDF file
-   name) and opens the print dialog. When the dialog closes, the copy, theme and title
-   are restored.
+   sidebar offsets, "Show more" clamps and copy / edit / rating buttons are removed.
+4. Rewrites the layouts Chrome splits badly across printed pages, using each element's
+   live computed layout: tall column flexboxes become plain blocks (keeping each item's
+   alignment and gap), inline wrappers around blocks become blocks, scroll boxes lose
+   their clipping, fade masks and sticky positioning are dropped.
+5. Hides the rest of the page, switches to the light theme (optional), sets the tab title
+   (the PDF file name), writes the `@page` size and margins, and opens the print dialog.
+   The sites' own print handlers are stopped while this runs (ChatGPT, for one, mounts a
+   print view of its own), and the critical styles are inline `!important` because the
+   sites ship their print CSS in cascade layers. When the dialog closes, everything is
+   restored.
 
 Everything happens in your browser: no requests, no external libraries, no data
 leaves the page. The script never uses `innerHTML` (Gemini enforces Trusted Types).
