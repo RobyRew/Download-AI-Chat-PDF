@@ -1,0 +1,5 @@
+dist/
+node_modules/
+.DS_Store
+# git metadata kept outside .git while working inside a sandbox that blocks .git writes
+gitdir/

@@ -1,0 +1,55 @@
+name: Release
+
+# Push a tag that matches the script's @version (e.g. v1.0.0) to publish a release.
+# The release carries download-ai-chat-pdf.user.js (install / @downloadURL) and
+# download-ai-chat-pdf.meta.js (header only, polled through @updateURL).
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Build release assets
+        run: node scripts/build-release.mjs --tag "${GITHUB_REF_NAME}"
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "CHANGELOG.md has no section for [$version]" >&2
+            exit 1
+          fi
+          {
+            echo
+            echo "### Install"
+            echo
+            echo "With Tampermonkey, Violentmonkey or ScriptCat installed, open:"
+            echo "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/download-ai-chat-pdf.user.js"
+          } >> notes.md
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/download-ai-chat-pdf.user.js \
+            dist/download-ai-chat-pdf.meta.js \
+            --title "Download AI Chat PDF ${GITHUB_REF_NAME}" \
+            --notes-file notes.md \
+            --verify-tag
